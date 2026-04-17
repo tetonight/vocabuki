@@ -546,10 +546,10 @@ textarea.inp{resize:vertical;min-height:68px;}
 
 <script>
 // ════════════════════════════════════════
-// API CONFIG  ← デプロイ後にURLを書き換える
+// ════════════════════════════════════════
+// API CONFIG
 // ════════════════════════════════════════
 const API_URL = "https://vocabuki.dragxonx3.workers.dev";
-// 例: "https://vocabuki.dragon3xxxx.workers.dev"
 
 // ════════════════════════════════════════
 // AUTH
@@ -557,10 +557,10 @@ const API_URL = "https://vocabuki.dragxonx3.workers.dev";
 const TOKEN_KEY  = "vocabuki_token";
 const EXPIRY_KEY = "vocabuki_expiry";
 
-function getToken(){ return localStorage.getItem(TOKEN_KEY); }
+function getToken(){ return localStorage.getItem(TOKEN_KEY)||""; }
 function isLoggedIn(){
   const token=getToken(), expiry=parseInt(localStorage.getItem(EXPIRY_KEY)||"0");
-  return token && expiry > Date.now();
+  return !!(token && expiry > Date.now());
 }
 function saveSession(token, expiry){
   localStorage.setItem(TOKEN_KEY, token);
@@ -571,12 +571,14 @@ function clearSession(){
   localStorage.removeItem(EXPIRY_KEY);
 }
 
+// ── API関数 ─────────────────────────────
 async function apiLogin(id, pw){
   const res = await fetch(`${API_URL}/api/login`, {
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body: JSON.stringify({id, pw})
   });
+  if(!res.ok && res.status!==401) throw new Error("server error "+res.status);
   return res.json();
 }
 
@@ -584,7 +586,8 @@ async function apiLoadData(){
   const res = await fetch(`${API_URL}/api/data`, {
     headers:{"Authorization":"Bearer "+getToken()}
   });
-  if(res.status===401){ clearSession(); showLoginOverlay(); return null; }
+  if(res.status===401){ clearSession(); return null; }
+  if(!res.ok) throw new Error("load failed "+res.status);
   return res.json();
 }
 
@@ -592,42 +595,60 @@ async function apiSaveData(){
   const payload = JSON.stringify({ events: DB, users: USERS });
   const res = await fetch(`${API_URL}/api/data`, {
     method:"POST",
-    headers:{"Authorization":"Bearer "+getToken(), "Content-Type":"application/json"},
+    headers:{
+      "Authorization":"Bearer "+getToken(),
+      "Content-Type":"application/json"
+    },
     body: payload
   });
-  if(res.status===401){ clearSession(); showLoginOverlay(); }
+  if(res.status===401){ clearSession(); showLoginOverlay(); return false; }
+  if(!res.ok) throw new Error("save failed "+res.status);
+  return true;
 }
 
-async function apiLogout(){
-  await fetch(`${API_URL}/api/logout`, {
-    method:"POST",
-    headers:{"Authorization":"Bearer "+getToken()}
-  }).catch(()=>{});
-  clearSession();
-  showLoginOverlay();
-}
-
+// ── 画面制御 ─────────────────────────────
 function showLoginOverlay(){
-  document.getElementById("login-overlay").classList.remove("hidden");
+  const ov=document.getElementById("login-overlay");
+  ov.classList.remove("hidden");
+  ov.style.display="flex";
   document.getElementById("login-err").textContent="";
+  document.getElementById("login-loading").textContent="";
   document.getElementById("login-id").value="";
   document.getElementById("login-pw").value="";
 }
 function hideLoginOverlay(){
-  document.getElementById("login-overlay").classList.add("hidden");
+  const ov=document.getElementById("login-overlay");
+  ov.classList.add("hidden");
+  ov.style.display="none";
 }
 
-// ────────────────────────────────────────
-// ログインボタン
-// ────────────────────────────────────────
+// ── クラウドからデータ読み込み ────────────
+async function loadFromCloud(){
+  const data = await apiLoadData();
+  if(!data) return false;
+  // クラウドにデータがあればローカルを完全置換
+  if(data.events && Object.keys(data.events).length > 0){
+    // DBを空にしてからクラウドデータで埋める
+    for(const k in DB) delete DB[k];
+    Object.assign(DB, data.events);
+  }
+  if(Array.isArray(data.users) && data.users.length > 0){
+    USERS.length = 0;
+    USERS.push(...data.users);
+  }
+  return true;
+}
+
+// ── ログインボタン ────────────────────────
 document.getElementById("login-btn").onclick = async ()=>{
-  const id  = document.getElementById("login-id").value.trim();
-  const pw  = document.getElementById("login-pw").value;
-  const err = document.getElementById("login-err");
+  const id      = document.getElementById("login-id").value.trim();
+  const pw      = document.getElementById("login-pw").value;
+  const err     = document.getElementById("login-err");
   const loading = document.getElementById("login-loading");
   if(!id||!pw){ err.textContent="IDとパスワードを入力してください"; return; }
   err.textContent="";
   loading.textContent="認証中...";
+  document.getElementById("login-btn").disabled=true;
   try {
     const data = await apiLogin(id, pw);
     if(data.token){
@@ -638,35 +659,21 @@ document.getElementById("login-btn").onclick = async ()=>{
       showScreen("cal");
       renderCalendar();
     } else {
-      err.textContent = data.error || "ログイン失敗";
+      err.textContent = data.error || "IDまたはパスワードが違います";
     }
   } catch(e){
     err.textContent = "接続エラー。ネットワークを確認してください。";
+  } finally {
+    loading.textContent="";
+    document.getElementById("login-btn").disabled=false;
   }
-  loading.textContent="";
 };
-// Enterキーでログイン
 document.getElementById("login-pw").addEventListener("keydown", e=>{
   if(e.key==="Enter") document.getElementById("login-btn").click();
 });
-
-// ────────────────────────────────────────
-// クラウドからデータ読み込み
-// ────────────────────────────────────────
-async function loadFromCloud(){
-  const data = await apiLoadData();
-  if(!data) return;
-  if(data.events && Object.keys(data.events).length > 0) {
-    Object.assign(DB, data.events);
-    // 既存ダミーデータをクラウドデータで上書き
-    for(const k in DB){ if(!(k in data.events)) delete DB[k]; }
-    Object.assign(DB, data.events);
-  }
-  if(data.users && data.users.length > 0){
-    USERS.length=0;
-    USERS.push(...data.users);
-  }
-}
+document.getElementById("login-id").addEventListener("keydown", e=>{
+  if(e.key==="Enter") document.getElementById("login-pw").focus();
+});
 
 // ════════════════════════════════════════
 // UTILS
@@ -1863,13 +1870,32 @@ document.getElementById("sched-btn").onclick=showSchedScreen;
 document.getElementById("sched-back-btn").onclick=()=>showScreen("det");
 document.getElementById("output-back-btn").onclick=()=>showScreen("det");
 document.getElementById("save-btn").onclick=async ()=>{
+  const btn=document.getElementById("save-btn");
+  btn.textContent="保存中..."; btn.disabled=true;
   renderCalendar();
-  await apiSaveData();
-  const t=document.getElementById("toast");t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2000);
+  try {
+    const ok = await apiSaveData();
+    const t=document.getElementById("toast");
+    t.textContent = ok ? "✓ 保存しました" : "✓ 保存しました（オフライン）";
+    t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2000);
+  } catch(e){
+    const t=document.getElementById("toast");
+    t.textContent="⚠ 保存失敗。再試行してください";
+    t.style.background="var(--red)";
+    t.classList.add("show");
+    setTimeout(()=>{ t.classList.remove("show"); t.style.background=""; t.textContent="✓ 保存しました"; },3000);
+  } finally {
+    btn.textContent="変更を保存"; btn.disabled=false;
+  }
 };
 document.getElementById("del-btn").onclick=()=>{document.getElementById("del-modal-sub").textContent=`「${getCurEvt().name||"（名称未設定）"}」を削除します。`;document.getElementById("del-modal").classList.add("open");};
 document.getElementById("modal-cancel").onclick=()=>document.getElementById("del-modal").classList.remove("open");
-document.getElementById("modal-confirm").onclick=()=>{document.getElementById("del-modal").classList.remove("open");if(DB[curDate].length===1){delete DB[curDate];closeDetail();}else{DB[curDate].splice(curTabIdx,1);curTabIdx=Math.min(curTabIdx,DB[curDate].length-1);renderDetail();}};
+document.getElementById("modal-confirm").onclick=async ()=>{
+  document.getElementById("del-modal").classList.remove("open");
+  if(DB[curDate].length===1){delete DB[curDate];closeDetail();}
+  else{DB[curDate].splice(curTabIdx,1);curTabIdx=Math.min(curTabIdx,DB[curDate].length-1);renderDetail();}
+  await apiSaveData().catch(()=>{});
+};
 
 // swipe calendar → user
 let swipeY=0,swipeX=0;
@@ -1878,23 +1904,30 @@ calScroll.addEventListener("touchstart",e=>{swipeY=e.touches[0].clientY;swipeX=e
 calScroll.addEventListener("touchend",e=>{const dy=e.changedTouches[0].clientY-swipeY,dx=Math.abs(e.changedTouches[0].clientX-swipeX);const atBottom=calScroll.scrollTop+calScroll.clientHeight>=calScroll.scrollHeight-20;if(dy>80&&dx<60&&atBottom){showScreen("user");renderUserList();}},{passive:true});
 
 // ════════════════════════════════════════
-// INIT（認証チェック → データ読み込み → 起動）
+// INIT
 // ════════════════════════════════════════
 (async ()=>{
-  // まずカレンダー画面を用意（ログイン後に表示）
+  // まず画面を組み立て（まだ表示はログイン画面で隠れている）
   showScreen("cal");
   renderCalendar();
 
   if(isLoggedIn()){
-    // セッション有効 → クラウドからデータ読み込んで開始
-    const loading=document.getElementById("login-loading");
-    document.getElementById("login-overlay").style.display="flex"; // 一時的に表示
-    loading.textContent="データ読み込み中...";
-    await loadFromCloud();
-    hideLoginOverlay();
-    renderCalendar();
+    // トークン有効 → ログイン画面をローディング状態で表示してデータ取得
+    const loading = document.getElementById("login-loading");
+    const overlay = document.getElementById("login-overlay");
+    overlay.classList.remove("hidden");
+    overlay.style.display = "flex";
+    loading.textContent = "データ読み込み中...";
+    try {
+      await loadFromCloud();
+      hideLoginOverlay();
+      renderCalendar();
+    } catch(e){
+      clearSession();
+      loading.textContent = "";
+      document.getElementById("login-err").textContent = "接続エラー。再ログインしてください。";
+    }
   } else {
-    // 未ログイン or セッション切れ → ログイン画面
     showLoginOverlay();
   }
 })();
