@@ -28,7 +28,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #cal-screen{background:var(--bg);}
 #det-screen{background:var(--bg);transform:translateX(100%);opacity:1;}
 #det-screen.open{transform:translateX(0);}
-#user-screen{background:var(--bg);transform:translateY(100%);opacity:1;}
+#user-screen{background:var(--bg);transform:translateY(100%);opacity:1;display:flex;flex-direction:column;}
 #user-screen.open{transform:translateY(0);}
 #task-screen{background:var(--bg);transform:translateY(100%);opacity:1;}
 #task-screen.open{transform:translateY(0);}
@@ -216,11 +216,11 @@ textarea.inp{resize:vertical;min-height:68px;}
 
 /* ── TASK SCREEN ── */
 /* ── SCHEDULING SCREEN ── */
-#sched-screen{background:var(--bg);transform:translateX(100%);opacity:1;}
+#sched-screen{background:var(--bg);transform:translateX(100%);opacity:1;display:flex;flex-direction:column;}
 #sched-screen.open{transform:translateX(0);}
 .sched-hdr{flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:10px;}
 .sched-hdr-title{font-family:'Bebas Neue',cursive;font-size:18px;letter-spacing:2px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sched-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sched-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
 .sched-body{padding:12px;display:flex;flex-direction:column;gap:8px;padding-bottom:80px;}
 .sched-section-label{font-size:9px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);font-family:'JetBrains Mono',monospace;padding:4px 0 2px;}
 .sched-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);display:flex;align-items:center;gap:8px;padding:10px 12px;}
@@ -241,7 +241,7 @@ textarea.inp{resize:vertical;min-height:68px;}
 .sched-days-lbl{font-size:10px;color:var(--text3);white-space:nowrap;}
 .sched-rm{background:transparent;border:none;color:var(--text3);font-size:14px;cursor:pointer;padding:2px 4px;flex-shrink:0;}
 .sched-rm:active{color:var(--red);}
-.sched-add-bar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--bg2);border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;}
+.sched-add-bar{flex-shrink:0;background:var(--bg2);border-top:1px solid var(--border);padding:10px 12px;display:flex;gap:8px;}
 .sched-add-inp{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:13px;padding:10px 12px;font-family:'Noto Sans JP',sans-serif;outline:none;}
 .sched-add-inp::placeholder{color:var(--text3);}
 .sched-add-inp:focus{border-color:var(--accent2);}
@@ -277,9 +277,9 @@ textarea.inp{resize:vertical;min-height:68px;}
 .staff-chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 
 /* ── USER SCREEN ── */
-.user-hdr{flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:10px;}
+.user-hdr{flex-shrink:0;background:var(--bg);border-bottom:1px solid var(--border);padding:12px 14px;display:flex;align-items:center;gap:10px;z-index:10;}
 .user-hdr-title{font-family:'Bebas Neue',cursive;font-size:20px;letter-spacing:2px;flex:1;}
-.user-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.user-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0;}
 .user-body{padding:12px;display:flex;flex-direction:column;gap:8px;padding-bottom:24px;}
 .sort-area{padding:10px 12px 8px;flex-shrink:0;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;flex-direction:column;gap:8px;}
 .sort-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
@@ -387,6 +387,7 @@ textarea.inp{resize:vertical;min-height:68px;}
     <div class="login-err" id="login-err"></div>
     <button class="login-btn" id="login-btn">ログイン</button>
     <div class="login-loading" id="login-loading"></div>
+    <div style="text-align:center;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:8px">v1.0.0</div>
   </div>
 </div>
 
@@ -417,6 +418,7 @@ textarea.inp{resize:vertical;min-height:68px;}
         <button class="sub-nav-btn" id="user-btn">👥 ユーザー</button>
       </div>
     </div>
+    <div style="position:sticky;bottom:0;text-align:right;padding:4px 10px 6px;font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;pointer-events:none">v1.0.0</div>
   </div>
 </div>
 
